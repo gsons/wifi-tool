@@ -5,3 +5,6 @@ Widget.js
 Dist/
 squashfs-root/
 temp/
+mtd4
+mtd4.new.bin
+mtd4.bin
