@@ -66,7 +66,7 @@ def extract_squashfs_file(squashfs_image, offset, size, output_filename):
 
 
 if __name__ == '__main__':
-    image_file = 'D:\wifi\随身wifi助手\TQ\yingteng_MZ801_V1.2\mtd\mtd4'
+    #image_file = ''
     # sys.argv[1] = 'output'
     # sys.argv[2] = image_file
 
