@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta charset="utf-8" />
+        <title></title>
+        <link type="text/css" href="http://192.168.0.1/theme/common.css" rel="stylesheet" />
+        <link type="text/css" href="http://192.168.0.1/theme/chosen.css" rel="stylesheet" />
+        <link type="text/css" href="http://192.168.0.1/theme/mac/css.css" rel="stylesheet" />
+        <link type="text/css" href="http://192.168.0.1/theme/chosen.css" rel="stylesheet" />
+        <link href="http://192.168.0.1/favicon.ico" rel="shortcut icon" />
+        <meta name="viewport" initial-scale="1.0" />
+    </head>
+</head>
+
+<body>
+    <div class="form-body">
+        <div class="form-title">IMEI</div>
+        <div class="content">
+            <div class="row-fluid"><label class="span4 side-right" for="imeiText">串号(IMEI)<i
+                        class="colorRed">&nbsp;*</i></label>
+                <div class="span8"><input id="imeiText" name="mtuText" type="text" class="required"></div>
+            </div>
+        </div>
+        <div class="form-buttons"><input id='submit' type="submit" class="btn-1 " value="应用"></div>
+        <!-- <div class="form-note">
+            <div class="notes-title">&nbsp;</div>
+            <ul class="notes-content">
+                <li></li>
+            </ul>
+        </div> -->
+    </div>
+
+    <div class="form-body">
+        <div class="form-title">频点与小区</div>
+        <div class="content">
+            <div class="row-fluid"><label class="span4 side-right" for="arfcnText">频点(AFRFCN)<i
+                        class="colorRed">&nbsp;*</i></label>
+                <div class="span8"><input id="arfcnText" name="arfcnText" type="text" class="required"></div>
+            </div>
+            <div class="row-fluid"><label class="span4 side-right" for="pciText">小区(PCI)<i
+                        class="colorRed">&nbsp;*</i></label>
+                <div class="span8"><input id="pciText" name="pciText" type="text" class="required"></div>
+            </div>
+
+            <div class="row-fluid"><label class="span4 side-right"><i class="colorRed"
+                        style="visibility: hidden;">&nbsp;*</i></label>
+                <div class="span8">
+                    <p class="checkbox floatleft margintop10 marginright5"><input
+                            style="display: block;width: 100%;height: 100%;border: none;" id="locked" type="checkbox"
+                            name="locked">
+                    </p><label class="floatleft lineheight25 margintop5" for="locked">是否锁定</label>
+                </div>
+            </div>
+        </div>
+        <div class="form-buttons"><input id="sub_pci" type="submit" class="btn-1 " value="应用"></div>
+    </div>
+
+
+
+    <div class="form-body">
+        <div class="form-title">频段</div>
+        <div class="content">
+
+
+            <div class="row-fluid bandlist"></div>
+        </div>
+        <div class="form-buttons"><input id="sub_band" type="submit" class="btn-1 " value="应用"></div>
+    </div>
+
+    <div class="form-body">
+        <div class="form-title">AT命令</div>
+        <div class="content">
+            <div class="row-fluid"><label class="span4 side-right" for="atcmd">AT命令<i
+                        class="colorRed">&nbsp;*</i></label>
+                <div class="span8"><input id="atcmd" name="atcmd" type="text" class="required"></div>
+            </div>
+        </div>
+        <div class="form-buttons"><input id='sub_atcmd' type="submit" class="btn-1 " value="执行"></div>
+        <div class="row-fluid"><label class="span4 side-right" trans="ussd_contents"></label>
+            <div class="span8"><textarea name="at_reault" id="at_reault" rows="8" cols="50"
+                    readonly="readonly"></textarea></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // 封装 fetch 请求函数
+            function makeRequest(body) {
+                return fetch('http://192.168.0.1:8080', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: body
+                })
+                    .then(response => response.json())
+                    .catch(error => {
+                        console.error('请求出错:', error);
+                    });
+            }
+
+            // 初始化 IMEI 值
+            makeRequest('command=AT+CGSN')
+                .then(data => {
+                    if (data.status === 'success') {
+                        const match = data.output.match(/\+CGSN:\s*(\d+)/);
+                        if (match) {
+                            const imei = match[1];
+                            const imeiInput = document.getElementById('imeiText');
+                            if (imeiInput) {
+                                imeiInput.value = imei;
+                            }
+                        }
+                    }
+                });
+
+            // 读取小区与频点值
+            makeRequest('command=AT+ZLC?')
+                .then(data => {
+                    if (data.status === 'success') {
+                        const match = data.output.match(/\+ZLC:\s*(\d+),(\d+),(\d+)\s*OK/);
+                        if (match) {
+                            const lockedStatus = parseInt(match[1], 10);
+                            const arfcn = match[2];
+                            const pci = match[3];
+                            const arfcnInput = document.getElementById('arfcnText');
+                            const pciInput = document.getElementById('pciText');
+                            const lockedCheckbox = document.getElementById('locked');
+
+                            if (arfcnInput) {
+                                arfcnInput.value = arfcn;
+                            }
+                            if (pciInput) {
+                                pciInput.value = pci;
+                            }
+                            if (lockedCheckbox) {
+                                lockedCheckbox.checked = lockedStatus === 1;
+                            }
+                        }
+                    }
+                });
+
+            // 读取 LTE 频段掩码字符串
+            makeRequest('command=AT+ZLTEAMTBAND?')
+                .then(data => {
+                    if (data.status === 'success') {
+                        const match = data.output.match(/\+ZLTEAMTBAND:\s*(.*)\s*OK/);
+                        if (match) {
+                            const bandMask = match[1];
+                            const bands = decodeLteBands(bandMask);
+                            console.log('可用频段:', bands);
+
+                            const bandListContainer = document.querySelector('.bandlist');
+                            if (bandListContainer) {
+                                // 清空现有的内容
+                                bandListContainer.innerHTML = '';
+
+                                bands.forEach(band => {
+                                    // 创建行元素
+                                    const row = document.createElement('div');
+                                    row.className = 'row-fluid';
+
+                                    // 创建标签包装器
+                                    const labelWrapper = document.createElement('label');
+                                    labelWrapper.className = 'span4 side-right';
+                                    const hiddenStar = document.createElement('i');
+                                    hiddenStar.className = 'colorRed';
+                                    hiddenStar.style.visibility = 'hidden';
+                                    hiddenStar.textContent = ' *';
+                                    labelWrapper.appendChild(hiddenStar);
+
+                                    // 创建复选框包装器
+                                    const checkboxWrapper = document.createElement('p');
+                                    checkboxWrapper.className = 'checkbox floatleft margintop10 marginright5';
+
+                                    // 创建复选框
+                                    const checkbox = document.createElement('input');
+                                    checkbox.style.display = 'block';
+                                    checkbox.style.width = '100%';
+                                    checkbox.style.height = '100%';
+                                    checkbox.style.border = 'none';
+                                    checkbox.type = 'checkbox';
+                                    checkbox.id = `band-${band}`;
+                                    checkbox.name = 'band';
+                                    checkboxWrapper.appendChild(checkbox);
+
+                                    // 创建标签
+                                    const label = document.createElement('label');
+                                    label.className = 'floatleft lineheight25 margintop5';
+                                    label.setAttribute('for', `band-${band}`);
+                                    label.textContent = `频段${band}`;
+
+                                    // 创建右侧内容容器
+                                    const span8 = document.createElement('div');
+                                    span8.className = 'span8';
+                                    span8.appendChild(checkboxWrapper);
+                                    span8.appendChild(label);
+
+                                    // 将元素添加到行中
+                                    row.appendChild(labelWrapper);
+                                    row.appendChild(span8);
+
+                                    // 将行添加到频段列表容器中
+                                    bandListContainer.appendChild(row);
+                                });
+
+                                // 在所有频段加载完成后，读取已选中的 LTE 频段
+                                return makeRequest('command=AT+ZLTEBAND?');
+                            }
+                        }
+                    }
+                    return Promise.resolve(null);
+                })
+                .then(data => {
+                    if (data && data.status === 'success') {
+                        // 假设响应格式为 +ZLTEBAND: 频段掩码字符串 OK，需要根据实际响应调整正则表达式
+                        const match = data.output.match(/\+ZLTEBAND:\s*(.*)\s*OK/);
+                        if (match) {
+                            const selectedBandMask = match[1];
+                            const selectedBands = decodeLteBands(selectedBandMask);
+
+                            // 勾选对应的复选框
+                            selectedBands.forEach(band => {
+                                const checkbox = document.getElementById(`band-${band}`);
+                                if (checkbox) {
+                                    checkbox.checked = true;
+                                }
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('请求出错:', error);
+                });
+
+            // 处理频段的提交按钮点击事件
+            const subBandButton = document.getElementById('sub_band');
+            if (subBandButton) {
+                subBandButton.addEventListener('click', function (event) {
+                    event.preventDefault(); // 阻止表单默认提交行为
+
+                    // 获取所有被勾选的频段
+                    const checkedBands = [];
+                    const checkboxes = document.querySelectorAll('input[name="band"]:checked');
+                    checkboxes.forEach(checkbox => {
+                        const bandNumber = parseInt(checkbox.id.split('-')[1], 10);
+                        checkedBands.push(bandNumber);
+                    });
+
+                    // 将选中的频段编号数组转换为 LTE 频段掩码字符串
+                    const bandMask = encodeLteBands(checkedBands);
+
+                    // 提交请求
+                    const body = `command=AT+ZLTEBAND=${bandMask}`;
+                    makeRequest(body)
+                       .then(data => {
+                            if (data.status === 'success' && data.output.includes('buf:  OK')) {
+                                alert('修改频段成功');
+                            } else {
+                                alert('修改频段失败，请检查输入或网络连接。');
+                            }
+                        });
+                });
+            }
+
+            // 处理提交按钮点击事件
+            const submitButton = document.getElementById('submit');
+            if (submitButton) {
+                submitButton.addEventListener('click', function (event) {
+                    event.preventDefault(); // 阻止表单默认提交行为
+                    const imeiInput = document.getElementById('imeiText');
+                    if (imeiInput) {
+                        const imei = imeiInput.value;
+                        makeRequest(`command=AT+MODIMEI=${imei}`)
+                            .then(data => {
+                                const match = data.output.match(/MODIMEI:\s*(\d+)\s*OK/);
+                                if (match) {
+                                    const successImei = match[1];
+                                    alert(`修改成功，串号是：${successImei}`);
+                                } else {
+                                    alert('修改 IMEI 失败，请检查输入或网络连接。');
+                                }
+                            });
+                    }
+                });
+            }
+
+            // 处理 AT 命令的提交按钮点击事件
+    const subAtCmdButton = document.getElementById('sub_atcmd');
+    if (subAtCmdButton) {
+        subAtCmdButton.addEventListener('click', function (event) {
+            event.preventDefault(); // 阻止表单默认提交行为
+
+            // 获取 AT 命令输入框的值
+            const atCmdInput = document.getElementById('atcmd');
+            if (atCmdInput) {
+                const atCmdValue = atCmdInput.value;
+                const body = `command=${encodeURIComponent(atCmdValue)}`;
+
+                makeRequest(body)
+                   .then(data => {
+                        if (data && data.output) {
+                            const atResultTextarea = document.getElementById('at_reault');
+                            if (atResultTextarea) {
+                                atResultTextarea.value = data.output;
+                            }
+                        }
+                    })
+                   .catch(error => {
+                        console.error('执行 AT 命令出错:', error);
+                        const atResultTextarea = document.getElementById('at_reault');
+                        if (atResultTextarea) {
+                            atResultTextarea.value = `执行 AT 命令出错: ${error.message}`;
+                        }
+                    });
+            }
+        });
+    }
+
+            // 处理频点与小区的提交按钮点击事件
+            const subPciButton = document.getElementById('sub_pci');
+            if (subPciButton) {
+                subPciButton.addEventListener('click', function (event) {
+                    event.preventDefault(); // 阻止表单默认提交行为
+
+                    const lockedCheckbox = document.getElementById('locked');
+                    const arfcnInput = document.getElementById('arfcnText');
+                    const pciInput = document.getElementById('pciText');
+
+                    // 确定锁定状态
+                    const lockStatus = lockedCheckbox.checked ? 1 : 0;
+
+                    if (arfcnInput && pciInput) {
+                        const arfcn = arfcnInput.value;
+                        const pci = pciInput.value;
+                        const body = `command=AT+ZLC=${lockStatus},${arfcn},${pci}`;
+                        makeRequest(body)
+                           .then(data => {
+                                if (data.status === 'success' && data.output && data.output.includes('buf:  OK')) {
+                                    alert('设置锁定频点与小区成功');
+                                } else {
+                                    alert('设置锁定频点与小区失败，请检查输入或网络连接。');
+                                }
+                            });
+                    } 
+                    
+                    // else if (!lockedCheckbox.checked) {
+                    //     const body = `command=AT+ZLTELC=0,65535,65535`;
+                    //     makeRequest(body)
+                    //         .then(data => {
+                    //             if (data.status === 'success' && data.output && data.output.includes('buf:  OK')) {
+                    //                 alert('解除锁定成功');
+                    //             } else {
+                    //                 alert('解除锁定失败，请检查网络连接。');
+                    //             }
+                    //         });
+                    // }
+                });
+            }
+        });
+
+
+
+        /**
+         * 将 LTE 频段掩码字符串解析为频段编号数组
+         * @param {string} bandMask 频段掩码字符串，如 "149,0,0,0,226,1,0,0,0"
+         * @returns {number[]} 频段编号数组，如 [1,3,5,8,33,34,36,41]
+         */
+        function decodeLteBands(bandMask) {
+            if (!bandMask) return [];
+
+            return bandMask.split(",").reduce((result, octetStr, octetIndex) => {
+                const octet = parseInt(octetStr, 10);
+                if (isNaN(octet)) return result;
+
+                const binaryStr = octet.toString(2).padStart(8, '0');
+
+                // 从最低位(LSB)开始检查
+                for (let bitPos = 0; bitPos < 8; bitPos++) {
+                    if (binaryStr[7 - bitPos] === '1') { // 检查每一位是否为 1
+                        const bandNumber = octetIndex * 8 + bitPos + 1;
+                        result.push(bandNumber);
+                    }
+                }
+
+                return result;
+            }, []);
+        }
+
+        /**
+         * 将频段编号数组转换为 LTE 频段掩码字符串
+         * @param {number[]} bands 频段编号数组，如 [1,3,5,8,33,34,36,41]
+         * @returns {string} 频段掩码字符串，如 "149,0,0,0,226,1,0,0,0"
+         */
+        function encodeLteBands(bands) {
+            let i = [];
+            for (var t = 0; t < 8; t++) {
+                let s = "";
+                for (var o = 0; o < 8; o++)
+                    bands.includes(t * 8 + o + 1) ? s = "1" + s : s = "0" + s;
+                i.push(parseInt(s, 2))
+            }
+            return i.join(",")
+        }
+    </script>
+</body>
+
+</html>
