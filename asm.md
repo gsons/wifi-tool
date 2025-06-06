@@ -1,0 +1,6 @@
+r2 -w goahead2  
+s  0x0001a92e
+pd 5 @ 0x1a92c
+wa b 0x1a942
+pd 5 @ 0x1a92c
+wq

@@ -2,8 +2,8 @@
 
 # 定义常量
 ip="192.168.100.1"
-#password="MM888@Qiruizhilian20241202"
-password="159258@Qiruizhilian20241202"
+password="MM888@Qiruizhilian20241202"
+# password="159258@Qiruizhilian20241202"
 
 wait_time_after_curl=5
 
