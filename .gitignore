@@ -3,8 +3,10 @@ package-lock.json
 Widget.js
 .DS_File
 Dist/
-squashfs-root/
+squashfs-root*
 temp/
 mtd4
 mtd4.new.bin
 mtd4.bin
+wifiadmin
+bin
